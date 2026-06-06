@@ -593,9 +593,15 @@ function wireButtons() {
 
 function updateSize() {
   const panelEl = document.querySelector('.config-panel');
-  const pw = panelEl ? panelEl.offsetWidth : 280;
-  const w  = window.innerWidth - pw;
-  const h  = window.innerHeight;
+  let w, h;
+  if (window.innerWidth <= 768) {
+    w = window.innerWidth;
+    h = window.innerHeight - (panelEl ? panelEl.offsetHeight : 240);
+  } else {
+    w = window.innerWidth - (panelEl ? panelEl.offsetWidth : 280);
+    h = window.innerHeight;
+  }
+  if (w <= 0 || h <= 0) return;
   renderer.setSize(w, h, false);
   canvas.style.width  = w + 'px';
   canvas.style.height = h + 'px';
@@ -603,6 +609,7 @@ function updateSize() {
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', updateSize);
+window.addEventListener('orientationchange', () => setTimeout(updateSize, 150));
 
 // ─── Animate ─────────────────────────────────────────────────────────────────
 
