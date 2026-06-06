@@ -579,14 +579,16 @@ function setBackground(mode, url) {
     controls.update();
     syncGroup('bgmode', 'eigen');
   } else if (mode === 'woonkamer') {
-    // 3D kamer, schuine kijkhoek zodat sofa + deur beiden zichtbaar zijn
-    scene.background = new THREE.Color('#1A1614');
-    canvas.style.backgroundImage = '';
-    roomGroup.visible = true;
-    controls.enableRotate = true;
-    controls.enableZoom   = true;
-    camera.position.set(-14, 6, 52);
-    controls.target.set(-2, 0, 0);
+    // Demo kamer = echte foto als canvas-achtergrond, deur eroverheen
+    scene.background = null;
+    canvas.style.backgroundImage = 'url("room-demo.jpg")';
+    canvas.style.backgroundSize  = 'cover';
+    canvas.style.backgroundPosition = 'center';
+    roomGroup.visible = false;
+    controls.enableRotate = false;
+    controls.enableZoom   = false;
+    camera.position.set(0, 2, 80);
+    controls.target.set(0, 1, 0);
     controls.update();
     syncGroup('bgmode', 'demo');
   } else {
