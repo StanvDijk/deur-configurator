@@ -64,8 +64,8 @@ scene.background = new THREE.Color('#1A1614');
 
 // ─── Camera ──────────────────────────────────────────────────────────────────
 
-const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
-camera.position.set(0, 2, 48);
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 300);
+camera.position.set(0, 2, 65);
 
 // ─── Controls ────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping   = true;
 controls.dampingFactor   = 0.05;
 controls.minDistance     = 12;
-controls.maxDistance     = 60;
+controls.maxDistance     = 110;
 controls.maxPolarAngle   = Math.PI / 2.1;
 controls.enablePan       = false;
 controls.target.set(0, 0, 0);
