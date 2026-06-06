@@ -62,6 +62,9 @@ renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color('#1A1614');
 
+const roomGroup = new THREE.Group(); // kamer-context — wordt verborgen in foto-modus
+scene.add(roomGroup);
+
 // ─── Camera ──────────────────────────────────────────────────────────────────
 
 const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 300);
@@ -129,14 +132,14 @@ const wallMat = new THREE.MeshStandardMaterial({ color: '#E8E4DF', roughness: 0.
 const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), wallMat);
 wall.position.set(0, 1, backWallZ);
 wall.receiveShadow = true;
-scene.add(wall);
+roomGroup.add(wall);
 
 const floorMat = new THREE.MeshStandardMaterial({ color: '#C0B8B0', roughness: 0.92, metalness: 0 });
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -D.height / 2;
 floor.receiveShadow = true;
-scene.add(floor);
+roomGroup.add(floor);
 
 // ─── Front wall: deur is ingebouwd in een echte muur ─────────────────────────
 
@@ -146,17 +149,17 @@ const wallH  = D.height + 6;
 const fwLeft = new THREE.Mesh(new THREE.BoxGeometry(9, wallH, 0.28), fwMat);
 fwLeft.position.set(-(openingW / 2 + 4.5), 1, wallFaceZ);
 fwLeft.receiveShadow = true;
-scene.add(fwLeft);
+roomGroup.add(fwLeft);
 
 const fwRight = new THREE.Mesh(new THREE.BoxGeometry(9, wallH, 0.28), fwMat);
 fwRight.position.set(openingW / 2 + 4.5, 1, wallFaceZ);
 fwRight.receiveShadow = true;
-scene.add(fwRight);
+roomGroup.add(fwRight);
 
 const fwTop = new THREE.Mesh(new THREE.BoxGeometry(openingW + 18, 5, 0.28), fwMat);
 fwTop.position.set(0, D.height / 2 + 2.5, wallFaceZ);
 fwTop.receiveShadow = true;
-scene.add(fwTop);
+roomGroup.add(fwTop);
 
 // Kamer: zijwanden (loodrecht, van voormuur naar achterwand)
 const sideMat     = new THREE.MeshStandardMaterial({ color: '#E4DDD6', roughness: 0.94, metalness: 0 });
@@ -168,13 +171,13 @@ const roomSideL = new THREE.Mesh(sideGeo, sideMat);
 roomSideL.rotation.y = Math.PI / 2;
 roomSideL.position.set(-openingW / 2, 1, sideCenterZ);
 roomSideL.receiveShadow = true;
-scene.add(roomSideL);
+roomGroup.add(roomSideL);
 
 const roomSideR = new THREE.Mesh(sideGeo, sideMat);
 roomSideR.rotation.y = -Math.PI / 2;
 roomSideR.position.set(openingW / 2, 1, sideCenterZ);
 roomSideR.receiveShadow = true;
-scene.add(roomSideR);
+roomGroup.add(roomSideR);
 
 // ─── Groups ──────────────────────────────────────────────────────────────────
 
@@ -524,6 +527,29 @@ function setPattern(v)  { state.pattern  = v; buildGlass(); syncGroup('pattern',
 function setPanel(v)    { state.panel    = v; buildSidePanels(); syncGroup('panel', v); }
 function setPanelMat(v) { state.panelMat = v; buildSidePanels(); syncGroup('panelmat', v); }
 
+function setBackground(mode, url) {
+  if (mode === 'foto') {
+    const onLoad = (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      scene.background = tex;
+      roomGroup.visible = false;
+      controls.enableRotate = false;
+      camera.position.set(0, 0, 65);
+      controls.target.set(0, 0, 0);
+      controls.update();
+    };
+    new THREE.TextureLoader().load(url, onLoad, undefined, () => {
+      scene.background = new THREE.Color('#2A2420');
+      roomGroup.visible = false;
+    });
+  } else {
+    scene.background = new THREE.Color('#1A1614');
+    roomGroup.visible = true;
+    controls.enableRotate = true;
+  }
+  syncGroup('bgmode', mode === 'foto' ? (url === 'room-demo.jpg' ? 'demo' : 'eigen') : 'scene');
+}
+
 function toggleDoor() {
   state.isOpen = !state.isOpen;
   if (state.model === 'taats') {
@@ -581,6 +607,18 @@ function wireButtons() {
     b.addEventListener('click', () => setPanel(b.dataset.value)));
   document.querySelectorAll('[data-group="panelmat"] .option-btn').forEach(b =>
     b.addEventListener('click', () => setPanelMat(b.dataset.value)));
+  document.querySelectorAll('[data-group="bgmode"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => {
+      if (b.dataset.value === 'demo') setBackground('foto', 'room-demo.jpg');
+      else setBackground('scene');
+    }));
+  document.getElementById('room-photo-input')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setBackground('foto', ev.target.result);
+    reader.readAsDataURL(file);
+  });
   document.getElementById('open-btn')?.addEventListener('click', toggleDoor);
 }
 
