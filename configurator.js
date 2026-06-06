@@ -592,24 +592,15 @@ function wireButtons() {
 // ─── Resize ───────────────────────────────────────────────────────────────────
 
 function updateSize() {
-  const panelEl = document.querySelector('.config-panel');
-  let w, h;
-  if (window.innerWidth <= 768) {
-    w = window.innerWidth;
-    h = window.innerHeight - (panelEl ? panelEl.offsetHeight : 240);
-  } else {
-    w = window.innerWidth - (panelEl ? panelEl.offsetWidth : 280);
-    h = window.innerHeight;
-  }
-  if (w <= 0 || h <= 0) return;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if (w <= 0 || h <= 0) { requestAnimationFrame(updateSize); return; }
   renderer.setSize(w, h, false);
-  canvas.style.width  = w + 'px';
-  canvas.style.height = h + 'px';
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize', updateSize);
-window.addEventListener('orientationchange', () => setTimeout(updateSize, 150));
+window.addEventListener('orientationchange', () => setTimeout(updateSize, 200));
 
 // ─── Animate ─────────────────────────────────────────────────────────────────
 
