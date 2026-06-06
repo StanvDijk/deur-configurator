@@ -1,0 +1,189 @@
+:root {
+  --bg-panel:     #1C1612;
+  --bg-canvas:    #2A2420;
+  --accent:       #C8A87A;
+  --accent-dim:   #8A7055;
+  --text-primary: #F5F0E8;
+  --text-muted:   #9C8E7E;
+  --border:       #3A3028;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+  background: var(--bg-canvas);
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#canvas {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Config panel --- */
+
+.config-panel {
+  width: 280px;
+  min-width: 280px;
+  background: var(--bg-panel);
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+}
+
+.brand-header {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.brand-name {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+}
+
+.brand-sub {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* --- Sections --- */
+
+.config-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.section-label {
+  color: var(--text-muted);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.option-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* --- Buttons --- */
+
+.option-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  padding: 0.4rem 0.8rem;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.option-btn:hover  { border-color: var(--accent-dim); }
+.option-btn.active { border-color: var(--accent); color: var(--accent); }
+
+/* --- Color swatches --- */
+
+.color-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: 0 0 0 1px var(--border);
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+}
+
+.color-swatch:hover  { transform: scale(1.1); }
+.color-swatch.active { border-color: var(--accent); transform: scale(1.15); }
+
+/* --- CTA --- */
+
+.cta-btn {
+  display: block;
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--accent);
+  color: #1C1612;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: center;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  margin-top: auto;
+  transition: background 0.2s;
+}
+
+.cta-btn:hover { background: #D4B88A; }
+
+/* --- Mobile (< 768px): panel als overlay onderin --- */
+
+@media (max-width: 768px) {
+  #app {
+    flex-direction: column;
+  }
+
+  #canvas {
+    flex: 1;
+  }
+
+  .config-panel {
+    width: 100%;
+    min-width: unset;
+    height: 260px;
+    min-height: 260px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1rem;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .brand-header {
+    display: none;
+  }
+
+  .config-section {
+    min-width: 140px;
+  }
+
+  .cta-btn {
+    align-self: center;
+    margin-top: 0;
+    min-width: 180px;
+  }
+}

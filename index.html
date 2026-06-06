@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staut Deuren — 3D Configurator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <aside class="config-panel">
+      <div class="brand-header">
+        <span class="brand-name">STAUT DEUREN</span>
+        <span class="brand-sub">3D Configurator</span>
+      </div>
+
+      <div class="config-section">
+        <span class="section-label">Deurmodel</span>
+        <div class="option-group" data-group="model">
+          <button class="option-btn active" data-value="taats">Taatsdeur</button>
+          <button class="option-btn" data-value="scharnier">Scharnierdeur</button>
+          <button class="option-btn" data-value="schuif">Schuifdeur</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <span class="section-label">Kleur</span>
+        <div class="option-group" id="color-swatches"></div>
+      </div>
+
+      <div class="config-section">
+        <span class="section-label">Glaspatroon</span>
+        <div class="option-group" data-group="glass">
+          <button class="option-btn active" data-value="volledig">Volledig glas</button>
+          <button class="option-btn" data-value="spijlen">Verticale spijlen</button>
+          <button class="option-btn" data-value="ruitjes">Kleine ruitjes</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <span class="section-label">Zijpaneel</span>
+        <div class="option-group" data-group="panel">
+          <button class="option-btn active" data-value="geen">Geen</button>
+          <button class="option-btn" data-value="links">Links</button>
+          <button class="option-btn" data-value="rechts">Rechts</button>
+          <button class="option-btn" data-value="beide">Beide</button>
+        </div>
+      </div>
+
+      <a class="cta-btn" href="https://stautdeuren.nl/contact" target="_blank">
+        Interesse? Neem contact op
+      </a>
+    </aside>
+  </div>
+
+  <script type="module" src="configurator.js"></script>
+</body>
+</html>
