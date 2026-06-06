@@ -124,6 +124,26 @@ html, body {
 .color-swatch:hover  { transform: scale(1.1); }
 .color-swatch.active { border-color: var(--accent); transform: scale(1.15); }
 
+/* --- Open deur button --- */
+
+.open-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.8rem;
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.open-btn:hover,
+.open-btn.is-open { background: var(--accent); color: #1C1612; }
+
 /* --- CTA --- */
 
 .cta-btn {

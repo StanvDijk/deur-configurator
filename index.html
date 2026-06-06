@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Staut Deuren — 3D Configurator</title>
+  <title>3D Deur Configurator — Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
@@ -22,17 +22,18 @@
 
     <aside class="config-panel">
       <div class="brand-header">
-        <span class="brand-name">STAUT DEUREN</span>
-        <span class="brand-sub">3D Configurator</span>
+        <span class="brand-name">3D Deur Demo</span>
+        <span class="brand-sub">Configurator model</span>
       </div>
 
       <div class="config-section">
         <span class="section-label">Deurmodel</span>
         <div class="option-group" data-group="model">
-          <button class="option-btn active" data-value="taats">Taatsdeur</button>
-          <button class="option-btn" data-value="scharnier">Scharnierdeur</button>
+          <button class="option-btn" data-value="taats">Taatsdeur</button>
+          <button class="option-btn active" data-value="scharnier">Scharnierdeur</button>
           <button class="option-btn" data-value="schuif">Schuifdeur</button>
         </div>
+        <button class="open-btn" id="open-btn">Open deur</button>
       </div>
 
       <div class="config-section">
@@ -41,21 +42,36 @@
       </div>
 
       <div class="config-section">
-        <span class="section-label">Glaspatroon</span>
+        <span class="section-label">Glastype</span>
         <div class="option-group" data-group="glass">
-          <button class="option-btn active" data-value="volledig">Volledig glas</button>
-          <button class="option-btn" data-value="spijlen">Verticale spijlen</button>
-          <button class="option-btn" data-value="ruitjes">Kleine ruitjes</button>
+          <button class="option-btn active" data-value="helder">Helder</button>
+          <button class="option-btn" data-value="mat">Mat</button>
+          <button class="option-btn" data-value="gerookt">Gerookt</button>
+          <button class="option-btn" data-value="antiek">Antiek</button>
+          <button class="option-btn" data-value="ribbel">Ribbel</button>
+          <button class="option-btn" data-value="massief">Massief</button>
+        </div>
+      </div>
+
+      <div class="config-section">
+        <span class="section-label">Indeling</span>
+        <div class="option-group" data-group="pattern">
+          <button class="option-btn" data-value="volledig">Volledig</button>
+          <button class="option-btn" data-value="h2">2 vakken</button>
+          <button class="option-btn" data-value="h3">3 vakken</button>
+          <button class="option-btn" data-value="spijlen">Spijlen</button>
+          <button class="option-btn" data-value="grid23">Grid 2×3</button>
+          <button class="option-btn active" data-value="grid34">Grid 3×4</button>
         </div>
       </div>
 
       <div class="config-section">
         <span class="section-label">Zijpaneel</span>
         <div class="option-group" data-group="panel">
-          <button class="option-btn active" data-value="geen">Geen</button>
+          <button class="option-btn" data-value="geen">Geen</button>
           <button class="option-btn" data-value="links">Links</button>
           <button class="option-btn" data-value="rechts">Rechts</button>
-          <button class="option-btn" data-value="beide">Beide</button>
+          <button class="option-btn active" data-value="beide">Beide</button>
         </div>
       </div>
 

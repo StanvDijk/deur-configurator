@@ -4,150 +4,197 @@ import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const DOOR_DIMS = {
-  height: 22,
-  width:   9,
-  depth:  0.8,
-  frameW: 0.5,
-  panelW:  6,
+const D = {
+  height: 22, width: 9, depth: 0.7,
+  frameW: 0.45, panelW: 6,
 };
 
 const RAL_COLORS = {
-  ral9005: { name: 'Diepzwart',  hex: '#1A1A1A', roughness: 0.20 },
-  ral9010: { name: 'Zuiverwit',  hex: '#F4F0E8', roughness: 0.35 },
-  ral7016: { name: 'Antraciet',  hex: '#4A5258', roughness: 0.22 },
-  ral8019: { name: 'Grijsbruin', hex: '#5C4F4A', roughness: 0.30 },
-  ral7035: { name: 'Lichtgrijs', hex: '#CBD0CC', roughness: 0.40 },
-  ral6005: { name: 'Mosgroen',   hex: '#2D5A3D', roughness: 0.28 },
-  ral3005: { name: 'Wijnrood',   hex: '#7A2830', roughness: 0.25 },
+  ral9005: { name: 'Diepzwart',    hex: '#1C1C1C', roughness: 0.18 },
+  ral9010: { name: 'Zuiverwit',    hex: '#F2EEE6', roughness: 0.38 },
+  ral7016: { name: 'Antraciet',    hex: '#3A4044', roughness: 0.22 },
+  ral7040: { name: 'Venstergrijs', hex: '#8E9498', roughness: 0.32 },
+  ral6003: { name: 'Olijfgroen',   hex: '#454D3C', roughness: 0.28 },
+  ral8019: { name: 'Grijsbruin',   hex: '#46382E', roughness: 0.30 },
+  ral1019: { name: 'Grijs-beige',  hex: '#A89880', roughness: 0.36 },
+  ral7035: { name: 'Lichtgrijs',   hex: '#C4CCC8', roughness: 0.40 },
+  ral3005: { name: 'Wijnrood',     hex: '#622030', roughness: 0.25 },
+};
+
+const GLASS_TYPES = {
+  helder:  { color: '#B4D0C8', transmission: 0.92, roughness: 0.03 },
+  mat:     { color: '#F2F0EC', transmission: 0.22, roughness: 0.95 }, // koel wit, duidelijk opaque
+  gerookt: { color: '#28282E', transmission: 0.52, roughness: 0.05 }, // iets lichter — frame-kleur nog zichtbaar
+  antiek:  { color: '#D4C890', transmission: 0.76, roughness: 0.10 }, // warm amber, elegant
+  ribbel:  { color: '#C8B8A0', transmission: 0.48, roughness: 0.65 }, // warm beige, zichtbaar anders dan mat
+  // massief: geen glass material — handled separately in buildGlass()
 };
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const state = {
-  model: 'taats',
-  color: 'ral9005',
-  glass: 'volledig',
-  panel: 'geen',
+  model:   'scharnier',
+  color:   'ral9005',
+  glass:   'helder',
+  pattern: 'grid34',
+  panel:   'beide',
+  isOpen:  false,
 };
+
+let doorOpenAngle  = 0, doorTargetAngle  = 0;
+let doorOpenSlide  = 0, doorTargetSlide  = 0;
+let leafBaseZ      = 0;
 
 // ─── Renderer ────────────────────────────────────────────────────────────────
 
 const canvas = document.getElementById('canvas');
-
-const renderer = new THREE.WebGLRenderer({
-  canvas,
-  antialias: true,
-  powerPreference: 'high-performance',
-  stencil: false,
-});
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-renderer.setClearColor(new THREE.Color('#1E1A18'));
+renderer.toneMapping      = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled   = true;
+renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
 
 // ─── Scene ───────────────────────────────────────────────────────────────────
 
 const scene = new THREE.Scene();
+scene.background = new THREE.Color('#1A1614');
 
 // ─── Camera ──────────────────────────────────────────────────────────────────
 
-const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 150);
-camera.position.set(0, 2, 32);
+const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 200);
+camera.position.set(0, 2, 48);
 
 // ─── Controls ────────────────────────────────────────────────────────────────
 
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.minDistance = 12;
-controls.maxDistance = 55;
-controls.maxPolarAngle = Math.PI / 2;
-controls.enablePan = false;
-controls.target.set(0, 1.1, 0);
+controls.enableDamping   = true;
+controls.dampingFactor   = 0.05;
+controls.minDistance     = 12;
+controls.maxDistance     = 60;
+controls.maxPolarAngle   = Math.PI / 2.1;
+controls.enablePan       = false;
+controls.target.set(0, 0, 0);
 controls.update();
 
 // ─── Lights ──────────────────────────────────────────────────────────────────
 
-// Ambient zodat materialen altijd zichtbaar zijn ook zonder HDRI
-const ambient = new THREE.AmbientLight(0xffffff, 1.5);
+const ambient = new THREE.AmbientLight(0xffffff, 1.8);
 scene.add(ambient);
 
-const keyLight = new THREE.DirectionalLight(0xffffff, 3.0);
-keyLight.position.set(5, 8, 5);
-keyLight.castShadow = true;
-keyLight.shadow.mapSize.width  = 2048;
-keyLight.shadow.mapSize.height = 2048;
-keyLight.shadow.camera.near   = 0.5;
-keyLight.shadow.camera.far    = 60;
-keyLight.shadow.camera.left   = -20;
-keyLight.shadow.camera.right  =  20;
-keyLight.shadow.camera.top    =  20;
-keyLight.shadow.camera.bottom = -20;
-scene.add(keyLight);
+const key = new THREE.DirectionalLight(0xffffff, 3.5);
+key.position.set(6, 10, 8);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 0.5;
+key.shadow.camera.far  = 80;
+key.shadow.camera.left = key.shadow.camera.bottom = -25;
+key.shadow.camera.right = key.shadow.camera.top  =  25;
+scene.add(key);
 
-const rimLight = new THREE.DirectionalLight(0xC8A87A, 1.2);
-rimLight.position.set(-5, 3, -3);
-scene.add(rimLight);
+const rim  = new THREE.DirectionalLight(0xC8A87A, 1.4);
+rim.position.set(-6, 4, -4);
+scene.add(rim);
 
-const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
-fillLight.position.set(-3, 5, 8);
-scene.add(fillLight);
+const fill = new THREE.DirectionalLight(0xffffff, 0.9);
+fill.position.set(-4, 6, 10);
+scene.add(fill);
 
-// ─── HDRI (optioneel — verbetert reflecties als geladen) ─────────────────────
+// ─── HDRI (improves reflections when loaded) ──────────────────────────────────
 
 const pmremGen = new THREE.PMREMGenerator(renderer);
 pmremGen.compileEquirectangularShader();
-
 new RGBELoader().load(
   'https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_08_1k.hdr',
-  (hdrTexture) => {
-    const envMap = pmremGen.fromEquirectangular(hdrTexture).texture;
+  (hdr) => {
+    const envMap = pmremGen.fromEquirectangular(hdr).texture;
     scene.environment = envMap;
-    scene.environmentIntensity = 1.0;
-    // Met HDRI: verlaag ambient want HDRI doet het diffuse werk
-    ambient.intensity = 0.3;
-    hdrTexture.dispose();
-    pmremGen.dispose();
-    // Refresh materials voor HDRI reflecties
+    scene.environmentIntensity = 0.9;
+    ambient.intensity = 0.5;
+    hdr.dispose(); pmremGen.dispose();
     buildDoor();
-    buildGlass();
     buildSidePanels();
   }
 );
 
-// ─── Floor (shadow receiver) ─────────────────────────────────────────────────
+// ─── Environment: wall + floor ───────────────────────────────────────────────
 
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(60, 60),
-  new THREE.ShadowMaterial({ opacity: 0.3 })
-);
+const backWallZ  = -12;
+const openingW   = D.width + D.panelW * 2;     // 21 — deur + beide zijpanelen
+const wallFaceZ  = D.depth * 0.45;              // flush met voorkant deurframe
+
+const wallMat = new THREE.MeshStandardMaterial({ color: '#E8E4DF', roughness: 0.95, metalness: 0 });
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(60, 40), wallMat);
+wall.position.set(0, 1, backWallZ);
+wall.receiveShadow = true;
+scene.add(wall);
+
+const floorMat = new THREE.MeshStandardMaterial({ color: '#C0B8B0', roughness: 0.92, metalness: 0 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
 floor.rotation.x = -Math.PI / 2;
-floor.position.y = -DOOR_DIMS.height / 2;
+floor.position.y = -D.height / 2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// ─── Door groups ─────────────────────────────────────────────────────────────
+// ─── Front wall: deur is ingebouwd in een echte muur ─────────────────────────
 
-const doorGroup      = new THREE.Group();
-const glassGroup     = new THREE.Group();
+const fwMat = new THREE.MeshStandardMaterial({ color: '#EDE8E2', roughness: 0.90, metalness: 0 });
+const wallH  = D.height + 6;
+
+const fwLeft = new THREE.Mesh(new THREE.BoxGeometry(9, wallH, 0.28), fwMat);
+fwLeft.position.set(-(openingW / 2 + 4.5), 1, wallFaceZ);
+fwLeft.receiveShadow = true;
+scene.add(fwLeft);
+
+const fwRight = new THREE.Mesh(new THREE.BoxGeometry(9, wallH, 0.28), fwMat);
+fwRight.position.set(openingW / 2 + 4.5, 1, wallFaceZ);
+fwRight.receiveShadow = true;
+scene.add(fwRight);
+
+const fwTop = new THREE.Mesh(new THREE.BoxGeometry(openingW + 18, 5, 0.28), fwMat);
+fwTop.position.set(0, D.height / 2 + 2.5, wallFaceZ);
+fwTop.receiveShadow = true;
+scene.add(fwTop);
+
+// Kamer: zijwanden (loodrecht, van voormuur naar achterwand)
+const sideMat     = new THREE.MeshStandardMaterial({ color: '#E4DDD6', roughness: 0.94, metalness: 0 });
+const roomDepth   = wallFaceZ - backWallZ;
+const sideGeo     = new THREE.PlaneGeometry(roomDepth, wallH);
+const sideCenterZ = wallFaceZ - roomDepth / 2;
+
+const roomSideL = new THREE.Mesh(sideGeo, sideMat);
+roomSideL.rotation.y = Math.PI / 2;
+roomSideL.position.set(-openingW / 2, 1, sideCenterZ);
+roomSideL.receiveShadow = true;
+scene.add(roomSideL);
+
+const roomSideR = new THREE.Mesh(sideGeo, sideMat);
+roomSideR.rotation.y = -Math.PI / 2;
+roomSideR.position.set(openingW / 2, 1, sideCenterZ);
+roomSideR.receiveShadow = true;
+scene.add(roomSideR);
+
+// ─── Groups ──────────────────────────────────────────────────────────────────
+
+const frameGroup    = new THREE.Group();
+let   leafPivot     = new THREE.Group();
+let   glassInLeaf   = new THREE.Group();
 const sidePanelGroup = new THREE.Group();
-scene.add(doorGroup, glassGroup, sidePanelGroup);
+scene.add(frameGroup, leafPivot, sidePanelGroup);
 
 // ─── Materials ───────────────────────────────────────────────────────────────
 
 let steelMaterial = null;
-let glassMaterial  = null;
+let glassMaterial = null;
+let sidePanelGlassMaterial = null;
 
 function makeSteelMaterial() {
   if (steelMaterial) steelMaterial.dispose();
   const ral = RAL_COLORS[state.color];
   steelMaterial = new THREE.MeshStandardMaterial({
-    color:     new THREE.Color(ral.hex),
-    metalness: 0.7,
+    color: new THREE.Color(ral.hex),
+    metalness: 0.75,
     roughness: ral.roughness,
   });
   return steelMaterial;
@@ -155,362 +202,394 @@ function makeSteelMaterial() {
 
 function makeGlassMaterial() {
   if (glassMaterial) glassMaterial.dispose();
+  const g = GLASS_TYPES[state.glass] || GLASS_TYPES.helder;
   glassMaterial = new THREE.MeshPhysicalMaterial({
-    transmission: 0.85,
+    color:        new THREE.Color(g.color),
+    transmission: g.transmission,
+    roughness:    g.roughness,
     ior:          1.5,
-    roughness:    0.05,
-    thickness:    0.05,
-    color:        new THREE.Color('#AACCBB'),
+    thickness:    0.06,
     side:         THREE.DoubleSide,
   });
   return glassMaterial;
 }
 
-// ─── Dispose helper ──────────────────────────────────────────────────────────
+function makeSidePanelGlass() {
+  if (sidePanelGlassMaterial) sidePanelGlassMaterial.dispose();
+  // Duidelijk donkerder/meer opaque dan deurgas → paneel springt minder in het oog dan de deur
+  sidePanelGlassMaterial = new THREE.MeshPhysicalMaterial({
+    color:        new THREE.Color('#4A7A70'),
+    transmission: 0.42,
+    roughness:    0.10,
+    ior:          1.5,
+    thickness:    0.06,
+    side:         THREE.DoubleSide,
+  });
+  return sidePanelGlassMaterial;
+}
+
+// ─── Dispose ─────────────────────────────────────────────────────────────────
 
 function disposeGroup(group) {
-  group.traverse(child => {
-    if (!child.isMesh) return;
-    child.geometry?.dispose();
-    // Materials worden apart beheerd — niet hier disposen
-  });
+  group.traverse(child => { if (child.isMesh) child.geometry?.dispose(); });
   group.clear();
 }
 
-// ─── Frame builder ───────────────────────────────────────────────────────────
+// ─── Base geometry builders ───────────────────────────────────────────────────
 
 function buildFrame(dims, mat) {
   const { height, width, depth, frameW } = dims;
-  const group = new THREE.Group();
-
+  const g = new THREE.Group();
   const hBar = new THREE.BoxGeometry(width, frameW, depth);
+  const vBar = new THREE.BoxGeometry(frameW, height - frameW * 2, depth);
 
-  const top = new THREE.Mesh(hBar, mat);
-  top.position.y = height / 2 - frameW / 2;
-  top.castShadow = true;
-  group.add(top);
-
-  const bottom = new THREE.Mesh(hBar.clone(), mat);
-  bottom.position.y = -(height / 2 - frameW / 2);
-  bottom.castShadow = true;
-  group.add(bottom);
-
-  const innerH = height - frameW * 2;
-  const vBar = new THREE.BoxGeometry(frameW, innerH, depth);
-
-  const left = new THREE.Mesh(vBar, mat);
-  left.position.x = -(width / 2 - frameW / 2);
-  left.castShadow = true;
-  group.add(left);
-
-  const right = new THREE.Mesh(vBar.clone(), mat);
-  right.position.x = width / 2 - frameW / 2;
-  right.castShadow = true;
-  group.add(right);
-
-  return group;
+  [[0, height / 2 - frameW / 2, 0, hBar],
+   [0, -(height / 2 - frameW / 2), 0, hBar],
+   [-(width / 2 - frameW / 2), 0, 0, vBar],
+   [width / 2 - frameW / 2, 0, 0, vBar],
+  ].forEach(([x, y, z, geo]) => {
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(x, y, z);
+    m.castShadow = true; m.receiveShadow = true;
+    g.add(m);
+  });
+  return g;
 }
 
-function buildDoorPanel(dims, mat) {
+function buildPanel(dims, mat) {
   const { height, width, depth, frameW } = dims;
-  const innerW = width  - frameW * 2;
-  const innerH = height - frameW * 2;
-  const geo  = new THREE.BoxGeometry(innerW, innerH, depth * 0.6);
-  const mesh = new THREE.Mesh(geo, mat);
-  mesh.castShadow = true;
-  return mesh;
+  const m = new THREE.Mesh(
+    new THREE.BoxGeometry(width - frameW * 2, height - frameW * 2, depth * 0.55),
+    mat
+  );
+  m.castShadow = true; m.receiveShadow = true;
+  return m;
 }
 
-// ─── Door models ─────────────────────────────────────────────────────────────
-
-function buildTaatsdeur(dims, mat) {
-  const group = new THREE.Group();
-  group.add(buildFrame(dims, mat));
-  group.add(buildDoorPanel(dims, mat));
-  return group;
-}
-
-function buildScharnierdeur(dims, mat) {
-  const group = new THREE.Group();
-  group.add(buildFrame(dims, mat));
-  group.add(buildDoorPanel(dims, mat));
-
-  // Grote scharnieren zodat model duidelijk herkenbaar is
-  const { height, width, depth } = dims;
-  const hingeGeo = new THREE.BoxGeometry(0.8, 1.4, depth + 0.5);
-  [-height * 0.3, 0, height * 0.3].forEach(y => {
-    const hinge = new THREE.Mesh(hingeGeo, mat);
-    hinge.position.set(width / 2 + 0.1, y, 0);
-    hinge.castShadow = true;
-    group.add(hinge);
+function buildHandle(mat) {
+  const g = new THREE.Group();
+  // Modern vertical pull bar
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(0.10, 3.4, 0.10), mat);
+  bar.position.z = D.depth * 0.62;
+  bar.castShadow = true;
+  g.add(bar);
+  // Top + bottom brackets
+  const bkt = new THREE.BoxGeometry(0.10, 0.12, 0.46);
+  [-1.7, 1.7].forEach(y => {
+    const b = new THREE.Mesh(bkt, mat);
+    b.position.set(0, y, D.depth * 0.35);
+    b.castShadow = true;
+    g.add(b);
   });
-  return group;
+  return g;
 }
 
-function buildSchuifdeur(dims, mat) {
-  const { height, width, depth } = dims;
-  const group = new THREE.Group();
-  group.add(buildFrame(dims, mat));
+// Place all leaf contents (panel + handle + glass group) with correct offset from pivot
+function makeDoorLeaf(mat, pivotX) {
+  const leaf = new THREE.Group();
 
-  // Deurblad iets naar voren (hangt voor het frame)
-  const panel = buildDoorPanel(dims, mat);
-  panel.position.z = depth * 0.8;
-  group.add(panel);
+  // Geen solide paneel — stalen deur is frame + glas, geen dichte plaat
 
-  // Rail bovenaan — duidelijk zichtbaar
-  const railGeo = new THREE.CylinderGeometry(0.2, 0.2, width + 2, 12);
-  const rail = new THREE.Mesh(railGeo, mat);
+  const handle = buildHandle(mat);
+  // Handle on right side of door, at handle height (100cm from floor)
+  handle.position.set(D.width / 2 - D.frameW - 0.9 - pivotX, -1.0, 0);
+  leaf.add(handle);
+
+  glassInLeaf = new THREE.Group();
+  glassInLeaf.position.x = -pivotX;
+  leaf.add(glassInLeaf);
+
+  return leaf;
+}
+
+// ─── Door model builders ──────────────────────────────────────────────────────
+
+function buildTaatsdoor(mat) {
+  frameGroup.add(buildFrame(D, mat));
+  leafPivot.position.set(0, 0, 0);
+  leafPivot.add(makeDoorLeaf(mat, 0));
+}
+
+function buildScharnierdoor(mat) {
+  frameGroup.add(buildFrame(D, mat));
+
+  // Hinges on left stile (static part of frame)
+  const hingeGeo = new THREE.BoxGeometry(0.85, 1.3, D.depth + 0.4);
+  const hingeX   = -(D.width / 2 - D.frameW / 2) - 0.15;
+  [-D.height * 0.3, 0, D.height * 0.3].forEach(y => {
+    const h = new THREE.Mesh(hingeGeo, mat);
+    h.position.set(hingeX, y, 0);
+    h.castShadow = true;
+    frameGroup.add(h);
+  });
+
+  const pivotX = -(D.width / 2 - D.frameW);
+  leafPivot.position.set(pivotX, 0, 0);
+  leafPivot.add(makeDoorLeaf(mat, pivotX));
+}
+
+function buildSchuifdoor(mat) {
+  frameGroup.add(buildFrame(D, mat));
+
+  // Rail bovenaan (static)
+  const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, D.width + 2.5, 12), mat);
   rail.rotation.z = Math.PI / 2;
-  rail.position.y = height / 2 + 0.4;
+  rail.position.y = D.height / 2 + 0.35;
   rail.castShadow = true;
-  group.add(rail);
+  frameGroup.add(rail);
 
-  // Rail support links en rechts
-  const supportGeo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
-  [-width / 2 - 0.5, width / 2 + 0.5].forEach(x => {
-    const support = new THREE.Mesh(supportGeo, mat);
-    support.position.set(x, height / 2 + 0.4, 0);
-    group.add(support);
-  });
-
-  return group;
+  leafBaseZ = D.depth * 0.85;
+  leafPivot.position.set(0, 0, leafBaseZ);
+  leafPivot.add(makeDoorLeaf(mat, 0));
 }
 
-// ─── Glass patterns ──────────────────────────────────────────────────────────
+// ─── Glass pattern builders ───────────────────────────────────────────────────
 
-function buildFullGlass(dims, glassMat) {
-  const { height, width, frameW } = dims;
-  const innerW = width  - frameW * 2;
-  const innerH = height - frameW * 2;
-  const geo = new THREE.BoxGeometry(innerW, innerH, 0.12);
-  return new THREE.Mesh(geo, glassMat);
+function glassPanel(w, h, gMat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.10), gMat);
+  return m;
 }
 
-function buildVerticalMullions(dims, steelMat, glassMat) {
-  const group = new THREE.Group();
-  const { height, width, frameW } = dims;
-  const innerW = width  - frameW * 2;
-  const innerH = height - frameW * 2;
-  const mullionCount = 4;
-  const mullionW = 0.18;
-  const sectionW = innerW / (mullionCount + 1);
-
-  group.add(new THREE.Mesh(
-    new THREE.BoxGeometry(innerW, innerH, 0.1),
-    glassMat
-  ));
-
-  const spijlGeo = new THREE.BoxGeometry(mullionW, innerH, 0.15);
-  for (let i = 1; i <= mullionCount; i++) {
-    const spijl = new THREE.Mesh(spijlGeo.clone(), steelMat);
-    spijl.position.x = -innerW / 2 + sectionW * i;
-    spijl.castShadow = true;
-    group.add(spijl);
-  }
-  return group;
+function steelBar(w, h, sMat) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.14), sMat);
+  m.castShadow = true;
+  return m;
 }
 
-function buildGridGlass(dims, steelMat, glassMat) {
-  const group = new THREE.Group();
+function buildGlassContent(dims, gMat, sMat) {
   const { height, width, frameW } = dims;
-  const innerW = width  - frameW * 2;
-  const innerH = height - frameW * 2;
-  const cols = 3, rows = 5;
-  const rodW = 0.1;
-  const cellW = (innerW - rodW * (cols - 1)) / cols;
-  const cellH = (innerH - rodW * (rows - 1)) / rows;
+  const iW = width - frameW * 2;
+  const iH = height - frameW * 2;
+  const g   = new THREE.Group();
 
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) {
-      const cell = new THREE.Mesh(
-        new THREE.BoxGeometry(cellW, cellH, 0.08),
-        glassMat
-      );
-      cell.position.x = -innerW / 2 + cellW / 2 + c * (cellW + rodW);
-      cell.position.y = -innerH / 2 + cellH / 2 + r * (cellH + rodW);
-      group.add(cell);
+  switch (state.pattern) {
+    case 'h2': {
+      const barH = 0.35;
+      const panH = (iH - barH) / 2;
+      [panH / 2 + barH / 2, -(panH / 2 + barH / 2)].forEach(y => {
+        const p = glassPanel(iW, panH, gMat); p.position.y = y; g.add(p);
+      });
+      g.add(steelBar(iW, barH, sMat));
+      break;
+    }
+    case 'h3': {
+      const barH = 0.35, nBars = 2;
+      const panH = (iH - barH * nBars) / 3;
+      const yPositions = [panH + barH, 0, -(panH + barH)];
+      yPositions.forEach(y => { const p = glassPanel(iW, panH, gMat); p.position.y = y; g.add(p); });
+      [-barH / 2 - panH / 2 + (panH + barH), barH / 2 + panH / 2 - (panH + barH)].forEach(y => {
+        const b = steelBar(iW, barH, sMat); b.position.y = y; g.add(b);
+      });
+      break;
+    }
+    case 'spijlen': {
+      const n = 4, sw = 0.18, sec = iW / (n + 1);
+      g.add(glassPanel(iW, iH, gMat));
+      for (let i = 1; i <= n; i++) {
+        const s = steelBar(sw, iH, sMat); s.position.x = -iW / 2 + sec * i; g.add(s);
+      }
+      break;
+    }
+    case 'grid23': {
+      const cols = 2, rows = 3, rW = 0.14;
+      const cW = (iW - rW * (cols - 1)) / cols;
+      const cH = (iH - rW * (rows - 1)) / rows;
+      for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+        const p = glassPanel(cW, cH, gMat);
+        p.position.set(-iW / 2 + cW / 2 + c * (cW + rW), -iH / 2 + cH / 2 + r * (cH + rW), 0);
+        g.add(p);
+      }
+      for (let r = 1; r < rows; r++) { const b = steelBar(iW, rW, sMat); b.position.y = -iH / 2 + r * (cH + rW) - rW / 2; g.add(b); }
+      for (let c = 1; c < cols; c++) { const b = new THREE.Mesh(new THREE.BoxGeometry(rW, iH, 0.14), sMat); b.position.x = -iW / 2 + c * (cW + rW) - rW / 2; b.castShadow = true; g.add(b); }
+      break;
+    }
+    case 'grid34': {
+      const cols = 3, rows = 4, rW = 0.12;
+      const cW = (iW - rW * (cols - 1)) / cols;
+      const cH = (iH - rW * (rows - 1)) / rows;
+      for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) {
+        const p = glassPanel(cW, cH, gMat);
+        p.position.set(-iW / 2 + cW / 2 + c * (cW + rW), -iH / 2 + cH / 2 + r * (cH + rW), 0);
+        g.add(p);
+      }
+      for (let r = 1; r < rows; r++) { const b = steelBar(iW, rW, sMat); b.position.y = -iH / 2 + r * (cH + rW) - rW / 2; g.add(b); }
+      for (let c = 1; c < cols; c++) { const b = new THREE.Mesh(new THREE.BoxGeometry(rW, iH, 0.14), sMat); b.position.x = -iW / 2 + c * (cW + rW) - rW / 2; b.castShadow = true; g.add(b); }
+      break;
+    }
+    default: { // volledig
+      g.add(glassPanel(iW, iH, gMat));
     }
   }
-
-  const hRodGeo = new THREE.BoxGeometry(innerW, rodW, 0.12);
-  for (let r = 1; r < rows; r++) {
-    const rod = new THREE.Mesh(hRodGeo.clone(), steelMat);
-    rod.position.y = -innerH / 2 + r * (cellH + rodW) - rodW / 2;
-    rod.castShadow = true;
-    group.add(rod);
-  }
-
-  const vRodGeo = new THREE.BoxGeometry(rodW, innerH, 0.12);
-  for (let c = 1; c < cols; c++) {
-    const rod = new THREE.Mesh(vRodGeo.clone(), steelMat);
-    rod.position.x = -innerW / 2 + c * (cellW + rodW) - rodW / 2;
-    rod.castShadow = true;
-    group.add(rod);
-  }
-  return group;
+  return g;
 }
 
 // ─── Side panel builder ───────────────────────────────────────────────────────
 
-function buildOneSidePanel(side, dims, mat) {
-  const { height, width, depth, panelW, frameW } = dims;
-  const xOffset = side === 'links'
-    ? -(width / 2 + panelW / 2)
-    :   width / 2 + panelW / 2;
+function buildOneSidePanel(side) {
+  const { height, panelW, depth } = D;
+  const frameW = 0.35; // thinner than door frame — shows door is more substantial
+  const iW = panelW - frameW * 2;
+  const iH = height - frameW * 2;
+  const mat = steelMaterial || makeSteelMaterial();
+  // Zijpaneel glas volgt het gekozen glastype van de deur (behalve massief → helder)
+  const gMat = (state.glass === 'massief')
+    ? makeSidePanelGlass()
+    : (glassMaterial || makeGlassMaterial());
+  const g = new THREE.Group();
+  const xOff = side === 'links' ? -(D.width / 2 + panelW / 2) : D.width / 2 + panelW / 2;
+  g.position.x = xOff;
 
-  const group = new THREE.Group();
-  group.position.x = xOffset;
+  // Volledig frame: boven, onder, buitenstijl, binnenstijl
+  const hBar   = new THREE.BoxGeometry(panelW, frameW, depth);
+  const vBar   = new THREE.BoxGeometry(frameW, iH, depth);
+  const outerX = side === 'links' ? -(panelW / 2 - frameW / 2) :  (panelW / 2 - frameW / 2);
+  const innerX = side === 'links' ?  (panelW / 2 - frameW / 2) : -(panelW / 2 - frameW / 2);
+  [[0, height / 2 - frameW / 2, hBar],
+   [0, -(height / 2 - frameW / 2), hBar],
+   [outerX, 0, vBar],
+   [innerX, 0, vBar],
+  ].forEach(([x, y, geo]) => {
+    const m = new THREE.Mesh(geo, mat); m.position.set(x, y, 0); m.castShadow = true; g.add(m);
+  });
 
-  // Frame rondom zijpaneel
-  const hBar = new THREE.BoxGeometry(panelW, frameW, depth);
-  const top = new THREE.Mesh(hBar, mat);
-  top.position.y = height / 2 - frameW / 2;
-  top.castShadow = true;
-  group.add(top);
+  // Plain glass fill (no pattern — makes door stand out)
+  const gm = new THREE.Mesh(new THREE.BoxGeometry(iW, iH, 0.10), gMat);
+  g.add(gm);
 
-  const bottom = new THREE.Mesh(hBar.clone(), mat);
-  bottom.position.y = -(height / 2 - frameW / 2);
-  bottom.castShadow = true;
-  group.add(bottom);
-
-  const innerH = height - frameW * 2;
-  const outerBar = new THREE.BoxGeometry(frameW, innerH, depth);
-  const outer = new THREE.Mesh(outerBar, mat);
-  outer.position.x = side === 'links' ? -panelW / 2 + frameW / 2 : panelW / 2 - frameW / 2;
-  outer.castShadow = true;
-  group.add(outer);
-
-  // Glasvlak in zijpaneel
-  const glassW = panelW - frameW * 2;
-  const glassGeo = new THREE.BoxGeometry(glassW, innerH, 0.1);
-  group.add(new THREE.Mesh(glassGeo, glassMaterial || makeGlassMaterial()));
-
-  return group;
+  return g;
 }
 
 // ─── Build functions ──────────────────────────────────────────────────────────
 
 function buildDoor() {
-  disposeGroup(doorGroup);
+  disposeGroup(frameGroup);
+  scene.remove(leafPivot);
+  leafPivot = new THREE.Group();
+  glassInLeaf = null;
+  scene.add(leafPivot);
+
+  doorOpenAngle = doorTargetAngle = 0;
+  doorOpenSlide = doorTargetSlide = 0;
+  leafBaseZ = 0;
+  state.isOpen = false;
+  updateOpenButton();
+
   const mat = makeSteelMaterial();
-
-  let built;
-  if      (state.model === 'scharnier') built = buildScharnierdeur(DOOR_DIMS, mat);
-  else if (state.model === 'schuif')    built = buildSchuifdeur(DOOR_DIMS, mat);
-  else                                  built = buildTaatsdeur(DOOR_DIMS, mat);
-
-  doorGroup.add(built);
+  switch (state.model) {
+    case 'scharnier': buildScharnierdoor(mat); break;
+    case 'schuif':    buildSchuifdoor(mat);    break;
+    default:          buildTaatsdoor(mat);
+  }
+  buildGlass();
 }
 
 function buildGlass() {
-  disposeGroup(glassGroup);
+  if (!glassInLeaf) return;
+  disposeGroup(glassInLeaf);
 
-  const steel = steelMaterial || makeSteelMaterial();
-  const glass = makeGlassMaterial();
+  if (state.glass === 'massief') {
+    // Solid steel panel — geen glas
+    const { height, width, frameW, depth } = D;
+    const panel = new THREE.Mesh(
+      new THREE.BoxGeometry(width - frameW * 2, height - frameW * 2, depth * 0.5),
+      steelMaterial || makeSteelMaterial()
+    );
+    panel.castShadow = true;
+    glassInLeaf.add(panel);
+    return;
+  }
 
-  let built;
-  if      (state.glass === 'spijlen') built = buildVerticalMullions(DOOR_DIMS, steel, glass);
-  else if (state.glass === 'ruitjes') built = buildGridGlass(DOOR_DIMS, steel, glass);
-  else                                built = buildFullGlass(DOOR_DIMS, glass);
-
-  glassGroup.add(built);
+  const gMat = makeGlassMaterial();
+  const sMat = steelMaterial || makeSteelMaterial();
+  glassInLeaf.add(buildGlassContent(D, gMat, sMat));
 }
 
 function buildSidePanels() {
   disposeGroup(sidePanelGroup);
   if (state.panel === 'geen') return;
-
-  const mat = steelMaterial || makeSteelMaterial();
-  if (state.panel === 'links' || state.panel === 'beide') {
-    sidePanelGroup.add(buildOneSidePanel('links', DOOR_DIMS, mat));
-  }
-  if (state.panel === 'rechts' || state.panel === 'beide') {
-    sidePanelGroup.add(buildOneSidePanel('rechts', DOOR_DIMS, mat));
-  }
+  if (state.panel === 'links'  || state.panel === 'beide') sidePanelGroup.add(buildOneSidePanel('links'));
+  if (state.panel === 'rechts' || state.panel === 'beide') sidePanelGroup.add(buildOneSidePanel('rechts'));
 }
 
 // ─── Setters ─────────────────────────────────────────────────────────────────
 
-function setModel(value) {
-  state.model = value;
-  buildDoor();
-  buildGlass();
-  syncGroup('model', value);
-}
+function setModel(v)   { state.model   = v; buildDoor(); buildSidePanels(); syncGroup('model', v); }
+function setColor(v)   { state.color   = v; buildDoor(); buildSidePanels(); syncSwatches(); }
+function setGlass(v)   { state.glass   = v; buildGlass(); buildSidePanels(); syncGroup('glass', v); }
+function setPattern(v) { state.pattern = v; buildGlass(); syncGroup('pattern', v); }
+function setPanel(v)   { state.panel   = v; buildSidePanels(); syncGroup('panel', v); }
 
-function setColor(ralKey) {
-  state.color = ralKey;
-  buildDoor();
-  buildGlass();
-  buildSidePanels();
-  syncSwatches();
-}
-
-function setGlass(value) {
-  state.glass = value;
-  buildGlass();
-  syncGroup('glass', value);
-}
-
-function setPanel(value) {
-  state.panel = value;
-  buildSidePanels();
-  syncGroup('panel', value);
+function toggleDoor() {
+  state.isOpen = !state.isOpen;
+  if (state.model === 'taats') {
+    doorTargetAngle = state.isOpen ? -Math.PI * 0.38 : 0;
+  } else if (state.model === 'scharnier') {
+    doorTargetAngle = state.isOpen ? -Math.PI * 0.70 : 0;
+  } else {
+    doorTargetSlide = state.isOpen ? D.width + 1.5 : 0;
+  }
+  updateOpenButton();
 }
 
 // ─── UI ──────────────────────────────────────────────────────────────────────
 
-function syncGroup(groupName, activeValue) {
-  document.querySelectorAll(`[data-group="${groupName}"] .option-btn`).forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.value === activeValue);
+function syncGroup(name, val) {
+  document.querySelectorAll(`[data-group="${name}"] .option-btn`).forEach(b => {
+    b.classList.toggle('active', b.dataset.value === val);
   });
 }
 
 function syncSwatches() {
-  document.querySelectorAll('.color-swatch').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.ral === state.color);
+  document.querySelectorAll('.color-swatch').forEach(b => {
+    b.classList.toggle('active', b.dataset.ral === state.color);
   });
 }
 
+function updateOpenButton() {
+  const btn = document.getElementById('open-btn');
+  if (!btn) return;
+  btn.textContent = state.isOpen ? 'Sluit deur' : 'Open deur';
+  btn.classList.toggle('is-open', state.isOpen);
+}
+
 function buildSwatches() {
-  const container = document.getElementById('color-swatches');
+  const c = document.getElementById('color-swatches');
   Object.entries(RAL_COLORS).forEach(([key, ral]) => {
     const btn = document.createElement('button');
-    btn.className = 'color-swatch' + (key === state.color ? ' active' : '');
+    btn.className   = 'color-swatch' + (key === state.color ? ' active' : '');
     btn.style.background = ral.hex;
-    btn.title = `${key.toUpperCase().replace('RAL', 'RAL ')} — ${ral.name}`;
+    btn.title       = `${key.replace('ral', 'RAL ')} — ${ral.name}`;
     btn.dataset.ral = key;
     btn.addEventListener('click', () => setColor(key));
-    container.appendChild(btn);
+    c.appendChild(btn);
   });
 }
 
 function wireButtons() {
-  document.querySelectorAll('[data-group="model"] .option-btn').forEach(btn => {
-    btn.addEventListener('click', () => setModel(btn.dataset.value));
-  });
-  document.querySelectorAll('[data-group="glass"] .option-btn').forEach(btn => {
-    btn.addEventListener('click', () => setGlass(btn.dataset.value));
-  });
-  document.querySelectorAll('[data-group="panel"] .option-btn').forEach(btn => {
-    btn.addEventListener('click', () => setPanel(btn.dataset.value));
-  });
+  document.querySelectorAll('[data-group="model"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => setModel(b.dataset.value)));
+  document.querySelectorAll('[data-group="glass"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => setGlass(b.dataset.value)));
+  document.querySelectorAll('[data-group="pattern"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => setPattern(b.dataset.value)));
+  document.querySelectorAll('[data-group="panel"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => setPanel(b.dataset.value)));
+  document.getElementById('open-btn')?.addEventListener('click', toggleDoor);
 }
 
 // ─── Resize ───────────────────────────────────────────────────────────────────
 
 function updateSize() {
-  const panel = document.querySelector('.config-panel');
-  const panelW = panel ? panel.offsetWidth : 0;
-  const w = window.innerWidth - panelW;
-  const h = window.innerHeight;
+  const panelEl = document.querySelector('.config-panel');
+  const pw = panelEl ? panelEl.offsetWidth : 280;
+  const w  = window.innerWidth - pw;
+  const h  = window.innerHeight;
   renderer.setSize(w, h, false);
   canvas.style.width  = w + 'px';
   canvas.style.height = h + 'px';
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
-
 window.addEventListener('resize', updateSize);
 
 // ─── Animate ─────────────────────────────────────────────────────────────────
@@ -518,6 +597,17 @@ window.addEventListener('resize', updateSize);
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+
+  if (leafPivot) {
+    if (state.model === 'schuif') {
+      doorOpenSlide += (doorTargetSlide - doorOpenSlide) * 0.07;
+      leafPivot.position.set(doorOpenSlide, 0, leafBaseZ);
+    } else {
+      doorOpenAngle += (doorTargetAngle - doorOpenAngle) * 0.07;
+      leafPivot.rotation.y = doorOpenAngle;
+    }
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -526,7 +616,6 @@ function animate() {
 buildSwatches();
 wireButtons();
 buildDoor();
-buildGlass();
 buildSidePanels();
 updateSize();
 animate();
