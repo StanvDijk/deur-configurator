@@ -33,12 +33,13 @@ const GLASS_TYPES = {
 // ─── State ───────────────────────────────────────────────────────────────────
 
 const state = {
-  model:   'scharnier',
-  color:   'ral9005',
-  glass:   'helder',
-  pattern: 'grid34',
-  panel:   'beide',
-  isOpen:  false,
+  model:    'scharnier',
+  color:    'ral9005',
+  glass:    'helder',
+  pattern:  'grid34',
+  panel:    'beide',
+  panelMat: 'glas',
+  isOpen:   false,
 };
 
 let doorOpenAngle  = 0, doorTargetAngle  = 0;
@@ -431,10 +432,6 @@ function buildOneSidePanel(side) {
   const iW = panelW - frameW * 2;
   const iH = height - frameW * 2;
   const mat = steelMaterial || makeSteelMaterial();
-  // Zijpaneel glas volgt het gekozen glastype van de deur (behalve massief → helder)
-  const gMat = (state.glass === 'massief')
-    ? makeSidePanelGlass()
-    : (glassMaterial || makeGlassMaterial());
   const g = new THREE.Group();
   const xOff = side === 'links' ? -(D.width / 2 + panelW / 2) : D.width / 2 + panelW / 2;
   g.position.x = xOff;
@@ -452,9 +449,16 @@ function buildOneSidePanel(side) {
     const m = new THREE.Mesh(geo, mat); m.position.set(x, y, 0); m.castShadow = true; g.add(m);
   });
 
-  // Plain glass fill (no pattern — makes door stand out)
-  const gm = new THREE.Mesh(new THREE.BoxGeometry(iW, iH, 0.10), gMat);
-  g.add(gm);
+  // Glas (helder, vast) of muur (wand-kleur, solide)
+  if (state.panelMat === 'muur') {
+    const muurMat = new THREE.MeshStandardMaterial({ color: '#EDE8E2', roughness: 0.90, metalness: 0 });
+    const muur = new THREE.Mesh(new THREE.BoxGeometry(iW, iH, depth * 0.85), muurMat);
+    muur.receiveShadow = true;
+    g.add(muur);
+  } else {
+    const gm = new THREE.Mesh(new THREE.BoxGeometry(iW, iH, 0.10), makeSidePanelGlass());
+    g.add(gm);
+  }
 
   return g;
 }
@@ -515,9 +519,10 @@ function buildSidePanels() {
 
 function setModel(v)   { state.model   = v; buildDoor(); buildSidePanels(); syncGroup('model', v); }
 function setColor(v)   { state.color   = v; buildDoor(); buildSidePanels(); syncSwatches(); }
-function setGlass(v)   { state.glass   = v; buildGlass(); buildSidePanels(); syncGroup('glass', v); }
-function setPattern(v) { state.pattern = v; buildGlass(); syncGroup('pattern', v); }
-function setPanel(v)   { state.panel   = v; buildSidePanels(); syncGroup('panel', v); }
+function setGlass(v)    { state.glass    = v; buildGlass(); syncGroup('glass', v); }
+function setPattern(v)  { state.pattern  = v; buildGlass(); syncGroup('pattern', v); }
+function setPanel(v)    { state.panel    = v; buildSidePanels(); syncGroup('panel', v); }
+function setPanelMat(v) { state.panelMat = v; buildSidePanels(); syncGroup('panelmat', v); }
 
 function toggleDoor() {
   state.isOpen = !state.isOpen;
@@ -574,6 +579,8 @@ function wireButtons() {
     b.addEventListener('click', () => setPattern(b.dataset.value)));
   document.querySelectorAll('[data-group="panel"] .option-btn').forEach(b =>
     b.addEventListener('click', () => setPanel(b.dataset.value)));
+  document.querySelectorAll('[data-group="panelmat"] .option-btn').forEach(b =>
+    b.addEventListener('click', () => setPanelMat(b.dataset.value)));
   document.getElementById('open-btn')?.addEventListener('click', toggleDoor);
 }
 
