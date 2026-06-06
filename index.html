@@ -82,6 +82,38 @@
     </aside>
   </div>
 
+  <!-- Welcome modal -->
+  <div id="welcome-modal" class="modal-overlay">
+    <div class="modal-box">
+      <button class="modal-close" id="modal-close" aria-label="Sluiten">&#x2715;</button>
+      <p class="modal-eyebrow">Shopify Demo</p>
+      <h2 class="modal-title">3D Deur Configurator</h2>
+      <p class="modal-intro">
+        Dit is een interactieve demo van de configurator die direct op jouw Shopify-webshop gezet kan worden.
+        Klanten bouwen hun deur zelf samen — live, in 3D.
+      </p>
+      <ul class="modal-tips">
+        <li><span class="tip-icon">↻</span><span><strong>Draaien</strong> — klik en sleep om de deur vanuit elke hoek te bekijken</span></li>
+        <li><span class="tip-icon">⊕</span><span><strong>Zoomen</strong> — scroll of knijp om in- en uit te zoomen</span></li>
+        <li><span class="tip-icon">≡</span><span><strong>Aanpassen</strong> — kies rechts het deurmodel, kleur, glastype en indeling</span></li>
+      </ul>
+      <button class="modal-cta" id="modal-cta">Ga aan de slag</button>
+    </div>
+  </div>
+
   <script type="module" src="configurator.js"></script>
+  <script>
+    (function () {
+      const overlay = document.getElementById('welcome-modal');
+      function closeModal() {
+        overlay.classList.add('modal-hidden');
+      }
+      document.getElementById('modal-close').addEventListener('click', closeModal);
+      document.getElementById('modal-cta').addEventListener('click', closeModal);
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) closeModal();
+      });
+    })();
+  </script>
 </body>
 </html>
