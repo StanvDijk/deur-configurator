@@ -49,7 +49,7 @@ let leafBaseZ      = 0;
 // ─── Renderer ────────────────────────────────────────────────────────────────
 
 const canvas = document.getElementById('canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', stencil: false });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance', stencil: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping      = THREE.ACESFilmicToneMapping;
@@ -134,7 +134,7 @@ wall.position.set(0, 1, backWallZ);
 wall.receiveShadow = true;
 roomGroup.add(wall);
 
-const floorMat = new THREE.MeshStandardMaterial({ color: '#C0B8B0', roughness: 0.92, metalness: 0 });
+const floorMat = new THREE.MeshStandardMaterial({ color: '#B8864E', roughness: 0.72, metalness: 0 });
 const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = -D.height / 2;
@@ -178,6 +178,43 @@ roomSideR.rotation.y = -Math.PI / 2;
 roomSideR.position.set(openingW / 2, 1, sideCenterZ);
 roomSideR.receiveShadow = true;
 roomGroup.add(roomSideR);
+
+// ─── Groups ──────────────────────────────────────────────────────────────────
+
+// ─── Furniture: woonkamer meubels (in roomGroup, verborgen in foto-modus) ─────
+
+const sofaMat  = new THREE.MeshStandardMaterial({ color: '#C4B4A0', roughness: 0.88, metalness: 0 });
+const tableMat = new THREE.MeshStandardMaterial({ color: '#9B7A4E', roughness: 0.60, metalness: 0 });
+const floorY   = -D.height / 2;
+
+// Sofa — links van de deur, aan de kijker-kant
+const sofaGroup = new THREE.Group();
+sofaGroup.position.set(-16, floorY, 14);
+const sofaSeat = new THREE.Mesh(new THREE.BoxGeometry(15, 3.5, 9), sofaMat);
+sofaSeat.position.y = 1.75; sofaSeat.castShadow = true; sofaSeat.receiveShadow = true;
+sofaGroup.add(sofaSeat);
+const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(15, 6, 2), sofaMat);
+sofaBack.position.set(0, 5.0, 3.5); sofaBack.castShadow = true;
+sofaGroup.add(sofaBack);
+[[-6.5, 3.5, 0], [6.5, 3.5, 0]].forEach(([x, y, z]) => {
+  const arm = new THREE.Mesh(new THREE.BoxGeometry(2, 4.5, 9), sofaMat);
+  arm.position.set(x, y, z); arm.castShadow = true;
+  sofaGroup.add(arm);
+});
+roomGroup.add(sofaGroup);
+
+// Ronde bijzettafel — rechts voor
+const tableGroup = new THREE.Group();
+tableGroup.position.set(9, floorY, 18);
+const tableTop = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 0.5, 32), tableMat);
+tableTop.position.y = 4.5; tableTop.castShadow = true; tableTop.receiveShadow = true;
+tableGroup.add(tableTop);
+[[-2.5, -2.5], [2.5, -2.5], [-2.5, 2.5], [2.5, 2.5]].forEach(([x, z]) => {
+  const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 4, 8), tableMat);
+  leg.position.set(x, 2, z); leg.castShadow = true;
+  tableGroup.add(leg);
+});
+roomGroup.add(tableGroup);
 
 // ─── Groups ──────────────────────────────────────────────────────────────────
 
@@ -529,25 +566,40 @@ function setPanelMat(v) { state.panelMat = v; buildSidePanels(); syncGroup('pane
 
 function setBackground(mode, url) {
   if (mode === 'foto') {
-    const onLoad = (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      scene.background = tex;
-      roomGroup.visible = false;
-      controls.enableRotate = false;
-      camera.position.set(0, 0, 65);
-      controls.target.set(0, 0, 0);
-      controls.update();
-    };
-    new THREE.TextureLoader().load(url, onLoad, undefined, () => {
-      scene.background = new THREE.Color('#2A2420');
-      roomGroup.visible = false;
-    });
-  } else {
+    // Canvas wordt transparant — foto zit als CSS-background eronder
+    scene.background = null;
+    canvas.style.backgroundImage = `url("${url}")`;
+    canvas.style.backgroundSize  = 'cover';
+    canvas.style.backgroundPosition = 'center';
+    roomGroup.visible = false;
+    controls.enableRotate = false;
+    controls.enableZoom   = false;
+    camera.position.set(0, 2, 95);
+    controls.target.set(0, 2, 0);
+    controls.update();
+    syncGroup('bgmode', 'eigen');
+  } else if (mode === 'woonkamer') {
+    // 3D kamer, schuine kijkhoek zodat sofa + deur beiden zichtbaar zijn
     scene.background = new THREE.Color('#1A1614');
+    canvas.style.backgroundImage = '';
     roomGroup.visible = true;
     controls.enableRotate = true;
+    controls.enableZoom   = true;
+    camera.position.set(-14, 6, 52);
+    controls.target.set(-2, 0, 0);
+    controls.update();
+    syncGroup('bgmode', 'demo');
+  } else {
+    scene.background = new THREE.Color('#1A1614');
+    canvas.style.backgroundImage = '';
+    roomGroup.visible = true;
+    controls.enableRotate = true;
+    controls.enableZoom   = true;
+    camera.position.set(0, 2, 65);
+    controls.target.set(0, 0, 0);
+    controls.update();
+    syncGroup('bgmode', 'scene');
   }
-  syncGroup('bgmode', mode === 'foto' ? (url === 'room-demo.jpg' ? 'demo' : 'eigen') : 'scene');
 }
 
 function toggleDoor() {
@@ -609,7 +661,7 @@ function wireButtons() {
     b.addEventListener('click', () => setPanelMat(b.dataset.value)));
   document.querySelectorAll('[data-group="bgmode"] .option-btn').forEach(b =>
     b.addEventListener('click', () => {
-      if (b.dataset.value === 'demo') setBackground('foto', 'room-demo.jpg');
+      if (b.dataset.value === 'demo') setBackground('woonkamer');
       else setBackground('scene');
     }));
   document.getElementById('room-photo-input')?.addEventListener('change', (e) => {
